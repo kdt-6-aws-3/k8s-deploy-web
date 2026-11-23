@@ -1,0 +1,21 @@
+# EKS 전용 덮어쓰기: helm upgrade --install web ./container-project-web -n petclinic -f container-project-web/values-eks.yaml
+
+image:
+  repository: 852138520988.dkr.ecr.ap-northeast-2.amazonaws.com/aws-personal-project/web
+  tag: "0.0.3"
+
+# 외부 입구는 NLB → Envoy Gateway. web은 클러스터 내부(ClusterIP)에서만 받는다
+service:
+  type: ClusterIP
+  port: 8080
+
+# 노드 대신 AZ(2a · 2c) 기준으로 나눈다
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: web
+    matchLabelKeys:
+      - pod-template-hash
