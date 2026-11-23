@@ -1,0 +1,70 @@
+name: web
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/kdt-6-aws-3/container-project-web
+  tag: "0.0.3"
+  pullPolicy: IfNotPresent
+
+# GHCR 패키지가 public이라 pull용 Secret이 필요 없다
+imagePullSecrets: []
+
+# Nginx가 /api/ 요청을 넘길 WAS Service (nginx.conf의 ${WAS_HOST}:${WAS_PORT})
+was:
+  host: was
+  port: 8080
+
+# 외부 접속: http://<노드 공인 IP>:30080 (보안 그룹 30000-32767 허용 필요)
+service:
+  # 외부 입구는 Envoy Gateway(worker1:30090)로 옮겼다. web은 클러스터 내부에서만 받는다
+  type: ClusterIP
+  port: 8080
+  nodePort: 30080
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
+
+# nginx-unprivileged 기본 사용자 (UID 101)
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: ["ALL"]
+
+# 노드(hostname)마다 Pod 수 차이를 1 이하로 유지한다
+# nodeTaintsPolicy: Honor - taint가 있는 cp는 분산 대상에서 뺀다 (안 빼면 rollout 중 surge Pod가 Pending)
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: DoNotSchedule
+    nodeTaintsPolicy: Honor
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: web
+    # 같은 ReplicaSet(revision) Pod끼리만 센다. 없으면 rollout 중 이전 Pod까지 세어 새 Pod가 한 노드에 몰린다
+    matchLabelKeys:
+      - pod-template-hash
+
+# 자발적 중단(drain 등)에도 최소 1개는 남긴다
+pdb:
+  enabled: true
+  minAvailable: 1
+
+# 종료 직전 대기: Service Endpoint에서 빠지는 동안(kube-proxy 반영 지연) 기존 Pod가 요청을 계속 받게 한다
+preStopSleepSeconds: 10
+
+# 전용 ServiceAccount: default SA를 같이 쓰지 않는다
+# 앱이 Kubernetes API를 호출하지 않으므로 API 토큰을 Pod에 마운트하지 않는다
+serviceAccount:
+  automountToken: false

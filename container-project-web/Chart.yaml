@@ -1,0 +1,6 @@
+apiVersion: v2
+name: container-project-web
+description: PetClinic WEB 계층 (React SPA + Nginx, Deployment + NodePort)
+type: application
+version: 0.1.0
+appVersion: "0.0.3"
