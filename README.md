@@ -73,6 +73,15 @@ curl -s "http://$H/api/owners?size=1"                     # WAS · RDS 응답
 
 NLB가 처음 만들어지면 DNS가 퍼지고 대상이 healthy가 될 때까지 몇 분 걸립니다.
 
+## 로그 (EKS: EFS)
+
+이미지의 `/var/log/nginx/access.log` · `error.log`는 stdout · stderr 심볼릭 링크입니다.
+EKS(`values-eks.yaml`, `logs.enabled: true`)에서는 그 자리에 EFS PVC `petclinic-shared`의 `web/<Pod 이름>/`를 덮어 마운트해서 nginx가 실제 파일로 씁니다.
+PVC는 k8s-deploy-was의 `eks/storage-efs.yaml`로 먼저 만듭니다.
+
+- kubeadm(`values.yaml`)은 `logs.enabled: false`라 지금처럼 stdout으로 나갑니다
+- 컨테이너 안에 logrotate가 없어 파일이 계속 커집니다. 오래 운영하면 정리 방법이 필요합니다
+
 ## 공통 보안 설정
 
 - `nginx-unprivileged` 이미지(UID 101)로 non-root 실행, 권한 상승 금지, capability 전부 제거 (PSA `restricted` 통과)

@@ -19,3 +19,8 @@ topologySpreadConstraints:
         app.kubernetes.io/name: web
     matchLabelKeys:
       - pod-template-hash
+
+# nginx 로그는 EFS(k8s-deploy-was eks/storage-efs.yaml의 PVC)에 쓴다: web/<Pod 이름>/access.log · error.log
+logs:
+  enabled: true
+  claimName: petclinic-shared

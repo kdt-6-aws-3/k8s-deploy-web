@@ -47,6 +47,20 @@ spec:
               value: {{ .Values.was.host | quote }}
             - name: WAS_PORT
               value: {{ .Values.was.port | quote }}
+            {{- if .Values.logs.enabled }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- end }}
+          {{- if .Values.logs.enabled }}
+          volumeMounts:
+            # 이미지의 /var/log/nginx/access.log · error.log는 stdout · stderr 심볼릭 링크다
+            # 그 자리에 EFS(<dir>/<Pod 이름>/)를 덮어 마운트하면 nginx가 실제 파일로 쓴다
+            - name: logs
+              mountPath: /var/log/nginx
+              subPathExpr: {{ .Values.logs.dir }}/$(POD_NAME)
+          {{- end }}
           ports:
             - name: http
               containerPort: 8080
@@ -65,3 +79,9 @@ spec:
             timeoutSeconds: 3
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+      {{- if .Values.logs.enabled }}
+      volumes:
+        - name: logs
+          persistentVolumeClaim:
+            claimName: {{ .Values.logs.claimName }}
+      {{- end }}

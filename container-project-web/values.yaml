@@ -68,3 +68,10 @@ preStopSleepSeconds: 10
 # 앱이 Kubernetes API를 호출하지 않으므로 API 토큰을 Pod에 마운트하지 않는다
 serviceAccount:
   automountToken: false
+
+# nginx 로그를 PVC(EFS 등)에 쓴다. 끄면 stdout · stderr로 나간다 (kubeadm 기본)
+logs:
+  enabled: false
+  claimName: ""
+  # PVC 안 디렉터리: <dir>/<Pod 이름>/access.log · error.log
+  dir: web
